@@ -8,13 +8,13 @@ class Carrinho:
         if self.quantidade_itens < self.limite:
             self.produtos.append(produto)
             self.quantidade_itens += 1
+            return True
 
     def remover_produto(self, produto):
-        if produto in self.produtos:
-            self.produtos.remove(produto)
-            self.quantidade_itens -= 1
+        self.produtos.remove(produto)
+        self.quantidade_itens -= 1
 
     def limpar_carrinho(self):
-        self.produtos = []
         self.quantidade_itens = 0
+        self.produtos.clear()
 
