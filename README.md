@@ -1,5 +1,5 @@
 # Trabalho_Final_POO
-Trabalho final Realizado em conjunto com os membros: Carlos Amorin, Cauan Riffel e Giovani Pott
+Trabalho final Realizado em conjunto com os membros: Carlos Amorim, Cauan Riffel e Giovani Pott
 
 
 # Sistema de Gestão de Estoque e Processamento de Vendas — Arquitetura Orientada a Objetos
