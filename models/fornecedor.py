@@ -8,7 +8,6 @@ class Fornecedor:
 
     def armazenar(self, estoque, item):
         if self.quantidade < self.quantidade_maxima:
-            estoque.adicionar(item)
+            estoque.append(item)
             self.quantidade += 1
-            return 1
-        return 0
+            return True
