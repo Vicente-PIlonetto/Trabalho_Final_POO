@@ -1,20 +1,23 @@
 class Carrinho:
-    def __init__(self, quantidade_itens: int, produtos: list, limite: int):
+    def __init__(self, quantidade_itens: int):
         self.quantidade_itens = quantidade_itens
-        self.produtos = []
-        self.limite = limite
+        self.produtos = {}
 
-    def adicionar_produto(self, produto):
-        if self.quantidade_itens < self.limite:
-            self.produtos.append(produto)
-            self.quantidade_itens += 1
-            return True
+    def adicionar_produto(self, id: int, qnt: int):
+        if not self.produtos.get(id):
+            self.produtos[id] = qnt
+        else:
+            self.produtos[id] += qnt
+        self.quantidade_itens += qnt
+        return True
 
-    def remover_produto(self, produto):
-        self.produtos.remove(produto)
-        self.quantidade_itens -= 1
+    def remover_produto(self, id: int, qnt: int):
+        if self.produtos[id] > qnt:
+            self.produtos[id] -= qnt
+        else:
+            del self.produtos[id]
+        self.quantidade_itens -= qnt
 
     def limpar_carrinho(self):
         self.quantidade_itens = 0
         self.produtos.clear()
-

@@ -1,0 +1,2 @@
+aiosqlite
+argon2-cffi
