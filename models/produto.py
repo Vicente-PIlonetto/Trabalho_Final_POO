@@ -1,4 +1,5 @@
-from utils import get_pcnt, get_tipo_descricao
+from datetime import date
+from utils import get_pcnt, get_tipo_descricao, timestamp_to_date
 
 
 class Produto:
@@ -11,7 +12,15 @@ class Produto:
         "fabricante",
         "ncm",
     )
-    COLUMNS = (("ID", 40), ("Nome", 180), ("Tipo", 100), ("Preço", 80), ("Criador", 120), ("QNT disponível", 115), ("NCM", 55))
+    COLUMNS = (
+        ("ID", 40),
+        ("Nome", 180),
+        ("Tipo", 100),
+        ("Preço", 80),
+        ("Criador", 120),
+        ("QNT disponível", 115),
+        ("NCM", 55),
+    )
 
     def __init__(
         self,
@@ -35,11 +44,6 @@ class Produto:
     def from_db(cls, row: tuple):
         return cls(row[0], row[1], row[5], row[2], row[3], row[4], row[6])
 
-    @classmethod
-    def from_row(cls, row: tuple):
-        return cls(row[0], row[1], row[5], row[2], row[3], row[4], row[6])
-
-
     def to_tuple(self) -> tuple:
         return (
             self.id,
@@ -59,6 +63,17 @@ class Produto:
 
 
 class Alimento(Produto):
+    __slots__ = Produto.__slots__ + ("data_validade",)
+    COLUMNS = (
+        ("ID", 40),
+        ("Nome", 180),
+        ("Preço", 80),
+        ("Criador", 120),
+        ("QNT disponível", 115),
+        ("NCM", 55),
+        ("Data Validade", 120),
+    )
+
     def __init__(
         self,
         id: int,
@@ -70,10 +85,36 @@ class Alimento(Produto):
         data_validade: int,
     ) -> None:
         super().__init__(id, nome, quantidade, 1, preco, fabricante, ncm)
-        self.data_validade = data_validade
+        self.data_validade = timestamp_to_date(data_validade)
+
+    @classmethod
+    def from_db(cls, row: tuple):
+        return cls(row[0], row[1], row[5], row[3], row[4], row[6], row[8])
+
+    def to_tuple(self) -> tuple:
+        return (
+            self.id,
+            self.nome,
+            self.preco,
+            self.fabricante,
+            self.quantidade,
+            get_pcnt(self.ncm),
+            self.data_validade,
+        )
 
 
 class Eletronico(Produto):
+    __slots__ = Produto.__slots__ + ("tensao", "potencia")
+    COLUMNS = (
+        ("ID", 40),
+        ("Nome", 180),
+        ("Preço", 80),
+        ("Criador", 120),
+        ("QNT disponível", 115),
+        ("NCM", 55),
+        ("Tensao", 80),
+        ("Potência", 80),
+    )
     def __init__(
         self,
         id: int,
@@ -89,8 +130,39 @@ class Eletronico(Produto):
         self.tensao = tensao
         self.potencia = potencia
 
+    @classmethod
+    def from_db(cls, row: tuple):
+        return cls(row[0], row[1], row[5], row[3], row[4], row[6], row[8], row[9])
+
+    def to_tuple(self) -> tuple:
+        return (
+            self.id,
+            self.nome,
+            self.preco,
+            self.fabricante,
+            self.quantidade,
+            get_pcnt(self.ncm),
+            self.tensao,
+            self.potencia,
+        )
+
 
 class Roupas(Produto):
+    COLUMNS = (
+        ("ID", 40),
+        ("Nome", 180),
+        ("Preço", 80),
+        ("Criador", 120),
+        ("QNT disponível", 115),
+        ("NCM", 55),
+        ("Tamanho", 90),
+        ("tipo", 90),
+        ("tecido", 120),
+        ("cor", 40),
+        ("estampa", 80),
+        ("genero", 50),
+    )
+
     def __init__(
         self,
         id: int,
@@ -113,6 +185,39 @@ class Roupas(Produto):
         self.cor = cor
         self.estampa = estampa
         self.genero = genero
+
+    @classmethod
+    def from_db(cls, row: tuple):
+        return cls(
+            row[0],
+            row[1],
+            row[5],
+            row[3],
+            row[4],
+            row[6],
+            row[8],
+            row[9],
+            row[10],
+            row[11],
+            row[12],
+            row[13],
+        )
+
+    def to_tuple(self) -> tuple:
+        return (
+            self.id,
+            self.nome,
+            self.preco,
+            self.fabricante,
+            self.quantidade,
+            get_pcnt(self.ncm),
+            self.tamanho,
+            self.tipo,
+            self.tecido,
+            self.cor,
+            self.estampa,
+            self.genero,
+        )
 
 
 class Eletrodomestico(Produto):

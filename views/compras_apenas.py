@@ -1,7 +1,7 @@
-from tkinter import Frame, ttk, BOTH, CENTER, END
+from tkinter import Frame, ttk, CENTER
 from typing import Callable
 from functions import wrapper
-from models.produto import Produto
+from models.produto import Alimento, Eletronico, Produto, Roupas
 from models.usuario import Cliente, Funcionario, Usuario
 from database import db
 
@@ -13,7 +13,15 @@ class Compras_apenas_view(Frame):
 
         self.is_client = isinstance(user, Cliente)
 
-        columns = Produto.COLUMNS
+        cls = Produto
+        if type == 1:
+            cls = Alimento
+        elif type == 2:
+            cls = Eletronico
+        elif type == 3:
+            cls = Roupas
+
+        columns = cls.COLUMNS
 
         ttk.Button(
             self, text="Voltar", command=lambda: go_to("/compras", None, user)
@@ -40,33 +48,32 @@ class Compras_apenas_view(Frame):
         wrapper(self.get_products, user)
 
     def _add_cart(self, user: Cliente, qnt: int):
+        is_geral = None
         selected_items = self.table.selection()
         for item_id in selected_items:
             values = self.table.item(item_id)["values"]
-            if values[5] >= qnt:
-                user.carrinho.adicionar_produto(values[0], qnt)
-                values[5] -= qnt
+            is_geral = isinstance(values[-1], str) and values[-1][-1] == "%"
+            i_qnt = 5 if is_geral else 4
+            i_preco = 3 if is_geral else 2
+            if values[i_qnt] >= qnt:
+                user.carrinho.adicionar_produto(values[0], qnt, values[i_preco])
+                values[i_qnt] -= qnt
                 self.table.item(item_id, values=values)
 
     async def get_products(self, user: Usuario):
         self.dados = await db.load_products(self.type)
 
         for item in self.dados:
-            old_values = item.to_tuple()
-            item_id = old_values[0]
+            values = item.to_tuple()
+            item_id = values[0]
 
             if self.is_client and user.carrinho.produtos.get(item_id):
-                carrinho_qtd = user.carrinho.produtos[item_id]
+                carrinho_qtd = user.carrinho.produtos[item_id][0]
+                i = 5 if isinstance(values[-1], str) and values[-1][-1] == "%" else 4
 
-                if carrinho_qtd > old_values[5]:
-                    user.carrinho.produtos[item_id] = old_values[5]
-                    new_val5 = 0
-                else:
-                    new_val5 = max(0, old_values[5] - carrinho_qtd)
+                new_val5 = values[i] - carrinho_qtd
 
-                values = old_values[:5] + (new_val5,) + old_values[6:]
-            else:
-                values = old_values
+                values = values[:i] + (new_val5,) + values[i + 1 :]
 
             self.table.insert("", "end", values=values)
 

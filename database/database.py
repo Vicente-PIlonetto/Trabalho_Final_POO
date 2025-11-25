@@ -3,7 +3,8 @@ import aiosqlite
 from argon2 import PasswordHasher
 
 from constraints import ITEM_TYPES
-from models.produto import Produto
+from models.carrinho import Carrinho
+from models.produto import Alimento, Eletronico, Produto, Roupas
 
 
 class Database:
@@ -96,26 +97,43 @@ class Database:
 
     async def load_products(self, select_filter: int = 0):
         items: list[Produto] = []
+        cls = Produto
 
         _filter = ""
+        _join = ""
         if select_filter != 0:
-            _filter = f" WHERE type = {select_filter}"
+            _filter = f"WHERE p.type = {select_filter}"
+
+            if select_filter == 1:
+                _join = "JOIN food_columns fc ON fc.product_id = p.id"
+                cls = Alimento
+            elif select_filter == 2:
+                _join = "JOIN eletronic_columns ec ON ec.product_id = p.id"
+                cls = Eletronico
+            elif select_filter == 3:
+                _join = "JOIN cloath_columns cc ON cc.product_id = p.id"
+                cls = Roupas
+            elif select_filter == 4:
+                _join = "JOIN eletrodomesticos_columns ec ON ec.product_id = p.id"
+                cls = Eletronico
 
         res = await self.conn.execute(
             f"""
-            SELECT * FROM products {_filter};
+            SELECT * FROM products p {_join} {_filter};
         """
         )
         res = await res.fetchall()
         for _product in res:
-            items.append(Produto.from_db(_product))
+            items.append(cls.from_db(_product))
 
         return items
 
     async def load_products_id(self, ids: list[int]):
         items: list[Produto] = []
+        if not len(ids):
+            return items
 
-        ids_formatados = ",".join(map(lambda x: str(x), ids))
+        ids_formatados = ",".join(map(str, ids))
 
         res = await self.conn.execute(
             f"""
@@ -127,3 +145,31 @@ class Database:
             items.append(Produto.from_db(_product))
 
         return items
+
+    async def insert_pedido(self, id_usuario: int, items: Carrinho) -> bool:
+        valor = 0
+        _items = []
+
+        for item in items.produtos:
+            valor += item.preco * item.quantidade
+            _items.append([0, item.id, item.quantidade])
+
+
+        id = await self.conn.execute("""
+            INSERT INTO pedidos(id_usuario, value)
+            VALUES (?, ?)
+        """, (id_usuario, valor))
+
+        for item in _items:
+            item[0] = id
+
+        if not id:
+            return False
+
+        await self.conn.execute("""
+            INSERT INTO items_pedido
+            VALUES ?
+        """, ",".join(map(lambda x: f"({str(x)[1:-1]})", _items)))
+
+        items.limpar_carrinho()
+        return True

@@ -25,7 +25,7 @@ class Cliente(Usuario):
         super().__init__(nome, data_nascimento)
         self.credito = credito
         self.historico_de_compra = []
-        self.carrinho = Carrinho(0)
+        self.carrinho = Carrinho()
 
 
 class Fornecedor(Usuario):

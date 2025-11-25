@@ -1,4 +1,4 @@
-from tkinter import Frame, Event, StringVar, ttk
+from tkinter import Frame, StringVar, ttk
 from datetime import datetime
 from typing import Callable
 
@@ -10,16 +10,15 @@ from constraints import (
     TIPOS_USUARIO_IDS,
 )
 from functions import date_mask, possui_digitos, possui_letras, wrapper
-from models.usuario import Cliente, Funcionario, Usuario
 from database import db
 from utils import is_float
 
 
 class Sign_up_view(Frame):
 
-    def __init__(self, master, on_sign_up: Callable) -> None:
+    def __init__(self, master, back: Callable) -> None:
         super().__init__(master)
-        self.__on_sign_up = on_sign_up
+        self.__back = back
         self.born_date = StringVar(None, DATA_PADRAO)
 
         # Nome:
@@ -67,10 +66,12 @@ class Sign_up_view(Frame):
         self.label_error = ttk.Label(self, foreground="red")
         self.label_error.grid(row=7, columnspan=2)
 
-        self.login_btn = ttk.Button(
-            self, text="Criar Conta", command=lambda: wrapper(self.sign_up)
-        )
-        self.login_btn.grid(row=8, column=0)
+        frame = Frame(self)
+        ttk.Button(frame, text="Sair", command=back).grid(row=0, column=0)
+        ttk.Button(
+            frame, text="Criar Conta", command=lambda: wrapper(self.sign_up)
+        ).grid(row=0, column=1)
+        frame.grid(row=8, columnspan=2)
 
     async def sign_up(self):
         error = None
@@ -120,7 +121,7 @@ class Sign_up_view(Frame):
                 if res == -1:
                     error = "Falha ao cadastrar o usuario"
                 else:
-                    self.__on_sign_up()
+                    self.__back()
 
         if error:
             self.label_error.configure(text=error)
