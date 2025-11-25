@@ -1,7 +1,7 @@
 import asyncio
 from tkinter import StringVar, INSERT
 from tkinter.ttk import Entry
-from typing import Any, Callable, Awaitable, Coroutine, ParamSpec, TypeVar
+from typing import Any, Callable, Coroutine, ParamSpec, TypeVar
 
 from constraints import DATA_PADRAO
 

@@ -1,3 +1,4 @@
+from datetime import date
 from constraints import ITEM_TYPES
 
 
@@ -18,3 +19,7 @@ def get_tipo_descricao(tipo: int):
 
 def get_pcnt(value: float) -> str:
     return f"{value*100:.1f} %"
+
+def timestamp_to_date(timestamp: int) -> str:
+    dt = date.fromtimestamp(timestamp)
+    return dt.strftime("%d/%m/%Y")

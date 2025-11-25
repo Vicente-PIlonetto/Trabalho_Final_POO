@@ -1,0 +1,1 @@
+from .produto import Cadastro_produto_view

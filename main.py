@@ -3,6 +3,7 @@ import tkinter as tk
 from typing import Optional
 
 from views import Login_view, Sign_up_view
+from views.cadastros.produto import Cadastro_produto_view
 from views.carrinho import Carrinho_view
 from views.compras import Compra_view
 from views.compras_apenas import Compras_apenas_view
@@ -24,11 +25,12 @@ def change_view(pwd: str, *args):
             current_view = Sign_up_view(root, lambda: change_view("/login"))
             local = "Sign up"
         case "/login":
-            current_view = Login_view(root, lambda: change_view("/sign_up"), lambda user: change_view("/index", user))
+            current_view = Login_view(
+                root,
+                lambda: change_view("/sign_up"),
+                lambda user: change_view("/index", user),
+            )
             local = "Login"
-        case "/index":
-            current_view = Index_view(root, args[0], change_view)
-            local = "Index"
         case "/compras":
             local = "Compras"
             if args[0] == None:
@@ -42,11 +44,17 @@ def change_view(pwd: str, *args):
         case "/index":
             current_view = Index_view(root, args[0], change_view)
             local = "Index"
+        case "/pagamento":
+            current_view = Index_view(root, args[0], change_view)
+            local = "Pagamento"
+        case "/cadastro_produto":
+            current_view = Cadastro_produto_view(root, args[0], change_view)
+            local = "Cadastro de produtos"
 
     root.wm_title(f"{APP_NAME} - {local}")
     if not current_view:
         current_view = tk.Frame(root)
-        tk.Label(root).pack(expand=True)
+        tk.Label(root, text="Nenhuma Rota!").pack(expand=True)
     else:
         current_view.pack()
 
