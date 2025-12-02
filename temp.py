@@ -1,23 +1,19 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import colorchooser
 
-def on_select():
-    selected_items = tree.selection()  # retorna IDs dos itens selecionados
-    for item_id in selected_items:
-        values = tree.item(item_id)['values']  # pega os valores da linha
-        print("Linha selecionada:", values)
+def escolher_cor():
+    cor = colorchooser.askcolor(title="Escolha uma cor")
+    print(cor)  # retorna ((R, G, B), "#rrggbb")
+    if cor[1]:  # cor[1] é a representação hexadecimal
+        label.config(bg=cor[1])
 
 root = tk.Tk()
+root.geometry("300x100")
 
-tree = ttk.Treeview(root, columns=("Nome", "Idade"), show="headings")
-tree.heading("Nome", text="Nome")
-tree.heading("Idade", text="Idade")
-tree.pack()
+btn = tk.Button(root, text="Escolher cor", command=escolher_cor)
+btn.pack(pady=10)
 
-tree.insert("", tk.END, values=("Alice", 25))
-tree.insert("", tk.END, values=("Bob", 30))
-
-btn = tk.Button(root, text="Selecionar", command=on_select)
-btn.pack()
+label = tk.Label(root, text="Veja a cor aqui", width=20)
+label.pack(pady=10)
 
 root.mainloop()

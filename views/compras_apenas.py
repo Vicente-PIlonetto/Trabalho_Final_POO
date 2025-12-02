@@ -2,7 +2,7 @@ from tkinter import Frame, ttk, CENTER
 from typing import Callable
 from functions import wrapper
 from models.produto import Alimento, Eletronico, Produto, Roupas
-from models.usuario import Cliente, Funcionario, Usuario
+from models.usuario import Cliente, Usuario
 from database import db
 
 

@@ -172,9 +172,9 @@ class Roupas(Produto):
         fabricante: int,
         ncm: float,
         tamanho: int,
-        tipo: str,
+        tipo: int,
         tecido: int,
-        cor: int,
+        cor: str,
         estampa: int,
         genero: int,
     ) -> None:

@@ -2,7 +2,7 @@ from tkinter import Frame, ttk, CENTER
 from typing import Callable
 from functions import wrapper
 from models.produto import Produto
-from models.usuario import Cliente, Usuario
+from models.usuario import Cliente
 from database import db
 
 
@@ -41,10 +41,10 @@ class Carrinho_view(Frame):
         selected_items = self.table.selection()
         for item_id in selected_items:
             values = self.table.item(item_id)["values"]
-            if values[5] >= qnt:
-                self.user.carrinho.adicionar_produto(values[0], qnt)
-                values[5] -= qnt
-                self.table.item(item_id, values=values)
+
+            self.user.carrinho.adicionar_produto(values[0], qnt, value[3])
+            values[5] -= qnt
+            self.table.item(item_id, values=values)
 
     async def get_products(self):
         self.dados = await db.load_products_id(
@@ -56,11 +56,11 @@ class Carrinho_view(Frame):
             item_id = values[0]
 
             if self.user.carrinho.produtos.get(item_id):
-                carrinho_qtd = self.user.carrinho.produtos[item_id]
+                carrinho_qtd = self.user.carrinho.produtos[item_id][0]
                 i = 5 if isinstance(values[-1], str) and values[-1][-1] == "%" else 4
 
                 if carrinho_qtd > values[i]:
-                    self.user.carrinho.produtos[item_id] = values[index_qnt]
+                    self.user.carrinho.produtos[item_id] = values[i]
                     new_val = 0
                 else:
                     new_val = max(0, values[i] - carrinho_qtd)

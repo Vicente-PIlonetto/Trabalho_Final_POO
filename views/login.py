@@ -1,11 +1,9 @@
-import asyncio
-from tkinter import Frame
-from tkinter import ttk
+from tkinter import Frame, ttk
 from typing import Callable
 
+from components import Default_input
 from constraints import TIPOS_USUARIO_IDS
 from functions import wrapper
-from models import usuario
 from models.usuario import Cliente, Fornecedor, Funcionario, Usuario
 from database import db
 
@@ -14,23 +12,16 @@ class Login_view(Frame):
     def __init__(
         self,
         master,
-        on_sign_up_click: Callable,
         on_login_click: Callable[[Usuario], None],
     ) -> None:
         super().__init__(master)
         self.on_login_click = on_login_click
 
-        self.label = ttk.Label(self, text="Nome:")
-        self.label.grid(row=0, column=0, padx=5, pady=5)
+        self.name_input = Default_input(self, "Nome:")
+        self.name_input.grid(row=0, column=0, columnspan=2)
 
-        self.name_entry = ttk.Entry(self)
-        self.name_entry.grid(row=0, column=1, padx=5, pady=5)
-
-        self.label = ttk.Label(self, text="Senha:")
-        self.label.grid(row=1, column=0, padx=5, pady=5)
-
-        self.password_entry = ttk.Entry(self, show="*")
-        self.password_entry.grid(row=1, column=1, padx=5, pady=5)
+        self.password_entry = Default_input(self, "Senha:", "password")
+        self.password_entry.grid(row=1, column=0, columnspan=2)
 
         self.label_error = ttk.Label(self, foreground="red")
         self.label_error.grid(row=2, columnspan=2)
@@ -38,12 +29,9 @@ class Login_view(Frame):
         _frame = Frame(self)
 
         self.login_btn = ttk.Button(
-            _frame, text="Login", command=lambda: wrapper(self._on_login_click)
+            _frame, text="Login", command=lambda*args: wrapper(self._on_login_click)
         )
-        self.login_btn.pack(side="left")
-
-        self.signup_btn = ttk.Button(_frame, text="Sign up", command=on_sign_up_click)
-        self.signup_btn.pack(side="right")
+        self.login_btn.pack()
 
         _frame.grid(row=3, columnspan=2)
 
@@ -58,7 +46,7 @@ class Login_view(Frame):
                 usuario = Cliente(res[1], res[3], res[7])
             elif TIPOS_USUARIO_IDS[1] == user_type:
                 usuario = Funcionario(res[1], res[3], res[5], res[6])
-            elif TIPOS_USUARIO_IDS[2] == user_type:
+            else:
                 usuario = Fornecedor(res[1], res[3])
             usuario.id_usuario = res[0]
 
@@ -74,11 +62,13 @@ class Login_view(Frame):
         self.label_error.config(text=error)
 
     async def _validade(self):
-        if len(self.name_entry.get()) < 5:
+        name = self.name_input.get()
+        password = self.password_entry.get()
+        if len(name) < 5:
             return 0
-        elif len(self.password_entry.get()) < 5:
+        elif len(password) < 5:
             return 1
-        res = await db.login(self.name_entry.get(), self.password_entry.get())
+        res = await db.login(name, password)
 
         if not res:
             return 2

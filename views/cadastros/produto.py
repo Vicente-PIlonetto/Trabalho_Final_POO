@@ -1,11 +1,16 @@
-from tkinter import Entry, Frame, StringVar, ttk
+from datetime import datetime
+from tkinter import Frame, ttk
 from typing import Callable
 
-from constraints import DATA_PADRAO, ITEM_TYPES
-from functions import date_mask
+from components.default_input import Default_input
+from functions import wrapper
+from globals import FABRICANTES, ITEM_TYPES
+from models.produto import Alimento, Eletrodomestico, Eletronico, Produto, Roupas
 from models.usuario import Funcionario
 from utils import is_float
-from datetime import datetime
+from database import db
+
+TIPOS_TECIDO = ("Algodão", "Seda", "Cheta")
 
 
 class Cadastro_produto_view(Frame):
@@ -15,219 +20,240 @@ class Cadastro_produto_view(Frame):
         self._current_tipo = "Padrão"
         self.__back = lambda: go_to("/index", user)
 
-        ttk.Label(self, text="Nome:").grid(row=0, column=0, padx=5, pady=5)
-        self.nome_entry = ttk.Entry(self)
-        self.nome_entry.grid(row=0, column=1, padx=5, pady=5)
+        self.nome_input = Default_input(self, "Nome:")
+        self.nome_input.grid(row=0)
 
-        ttk.Label(self, text="Quantidade:").grid(row=1, column=0, padx=5, pady=5)
-        self.qnt_entry = ttk.Entry(self)
-        self.qnt_entry.grid(row=1, column=1)
+        self.qnt_input = Default_input(self, "Quantidade", "int")
+        self.qnt_input.grid(row=1)
 
-        ttk.Label(self, text="Preço:").grid(row=2, column=0, padx=5, pady=5)
-        self.preco_entry = ttk.Entry(self)
-        self.preco_entry.grid(row=2, column=1)
+        self.preco_entry = Default_input(self, "Preço:", "float")
+        self.preco_entry.grid(row=2)
 
-        ttk.Label(self, text="Fabricante(ID):").grid(row=3, column=0, padx=5, pady=5)
-        self.fabricante_entry = ttk.Entry(self)
-        self.fabricante_entry.grid(row=3, column=1)
-
-        ttk.Label(self, text="NCM(%):").grid(row=4, column=0, padx=5, pady=5)
-        self.ncm_entry = ttk.Entry(self)
-        self.ncm_entry.grid(row=4, column=1)
-
-        ttk.Label(self, text="Tipo de produto:").grid(row=5, column=0, padx=5, pady=5)
-        self.tipo_combo = ttk.Combobox(
-            self,
-            values=("Padrão",) + tuple(map(lambda x: x[1], ITEM_TYPES)),
-            state="readonly",
+        self.fabricante_entry = Default_input(
+            self, "Fabricante", "combo", tuple(map(lambda x: x[1], FABRICANTES))
         )
-        self.tipo_combo.set("Padrão")
-        self.tipo_combo.grid(row=5, column=1)
+        self.fabricante_entry.grid(row=3)
+
+        self.ncm_entry = Default_input(self, "NCM(%):", "float")
+        self.ncm_entry.grid(row=4)
+
+        self.tipo_combo = Default_input(
+            self,
+            "Tipo de produto:",
+            "combo",
+            ("Padrão",) + tuple(map(lambda x: x[1], ITEM_TYPES)),
+            lambda *args: self._change_tipo_produto(),
+        )
+        self.tipo_combo.grid(row=5)
+
         self.tipo_combo.bind("<<ComboboxSelected>>", self._change_tipo_produto)
 
         self.current_prod_infos = ttk.Frame(self)
 
-        self.validade_entry: Entry = None
+        self.validade_entry: Frame = None
 
-        self.tensao_entry: Entry = None
-        self.potencia_entry: Entry = None
+        self.tensao_entry: Frame = None
+        self.potencia_entry: Frame = None
 
-        self.tamanho_entry: Entry = None
-        self.tipo_roupa_entry: Entry = None
-        self.tecido_entry: Entry = None
-        self.cor_entry: Entry = None
-        self.estampa_entry: Entry = None
-        self.genero_entry: Entry = None
+        self.tamanho_entry: Frame = None
+        self.tipo_roupa_entry: Frame = None
+        self.tecido_combo: Frame = None
+        self.cor_entry: Frame = None
+        self.estampa_entry: Frame = None
+        self.genero_entry: Frame = None
 
-        self.ano_entry: Entry = None
-        self.marca_entry: Entry = None
-        self.funcao_entry: Entry = None
-        self.tipo_eletro_entry: Entry = None
+        self.ano_entry: Frame = None
+        self.marca_entry: Frame = None
+        self.funcao_entry: Frame = None
+        self.tipo_eletro_entry: Frame = None
 
         self.label_error = ttk.Label(self, foreground="red")
         self.label_error.grid(row=20, columnspan=2)
 
         frame = Frame(self)
         ttk.Button(frame, text="Voltar", command=self.__back).grid(row=0, column=0)
-        ttk.Button(frame, text="Salvar", command=self.save).grid(row=0, column=1)
+        ttk.Button(frame, text="Salvar", command=lambda *args: wrapper(self.save)).grid(
+            row=0, column=1
+        )
         frame.grid(row=21, columnspan=2)
 
-    def save(self):
+    async def save(self):
+        produto: Produto | None = None
         error = None
 
-        nome = self.nome_entry.get()
-        qnt = self.qnt_entry.get()
-        preco = self.preco_entry.get()
-        fabricante = self.fabricante_entry.get()
-        ncm = self.ncm_entry.get()
+        nome = str(self.nome_input.get())
+        qnt = int(self.qnt_input.get() or "0")
+        preco: float = float(self.preco_entry.get() or "0")
+        fabricante = int(self.fabricante_entry.get())
+        ncm = float(self.ncm_entry.get() or "0")
         tipo = self.tipo_combo.get()
 
         if len(nome) < 2:
             error = "Nome muito curto"
-        elif not qnt.isdigit():
-            error = "Quantidade inválida"
-        elif not is_float(preco):
-            error = "Preço inválido"
-        elif not fabricante.isdigit():
-            error = "Fabricante deve ser ID numérico"
-        elif not is_float(ncm):
-            error = "NCM inválido"
+        elif qnt < 0:
+            error = "Quantidade negativa!"
+        elif preco < 0:
+            error = "Preço negativo"
+        elif ncm < 0:
+            error = "NCM Negativo"
         else:
             dados_especificos = {}
 
             if ITEM_TYPES[0][1] == tipo:
-                tipo = ITEM_TYPES[0][0]
-
                 data_validade = self.validade_entry.get()
                 if "_" in data_validade:
                     error = "Data validade não completamente preenchida"
                 else:
                     dados_especificos["data_validade"] = data_validade
+                    produto = Alimento(
+                        0,
+                        nome,
+                        qnt,
+                        preco,
+                        fabricante,
+                        float(ncm) / 100,
+                        int(datetime.strptime(data_validade, "%d/%m/%Y").timestamp()),
+                    )
 
             elif ITEM_TYPES[1][1] == tipo:
-                tensao = self.tensao_entry.get()
-                potencia = self.potencia_entry.get()
+                tensao = int(self.tensao_entry.get())
+                potencia = int(self.potencia_entry.get())
 
-                if not tensao or not tensao.isdigit():
-                    error = "Tensão não é u número inteiro"
-                elif not potencia or not potencia.isdigit():
-                    error = "Potência não é u número inteiro"
+                if tensao < 0:
+                    error = "Tensão negativa"
+                elif potencia < 0:
+                    error = "Potência negativa"
                 else:
-                    dados_especificos["tensao"] = int(tensao)
-                    dados_especificos["potencia"] = int(potencia)
-            elif ITEM_TYPES[2][1] == tipo:
-                tamanho =self.tamanho_entry.get()
-                cloatch_tipo =self.tipo_roupa_entry.get()
-                tecido =self.tecido_entry.get()
-                cor =self.cor_entry.get()
-                estampa =self.estampa_entry.get()
-                genero = self.genero_entry.get()
-
-                if not tamanho or not tamanho.isdigit():
-                    error = "Tamanho não é um número"
-
-                dados_especificos.update(
-                    dict(
-                        tamanho=int(),
-                        tipo=cloatch_tipo,
-                        tecido=int(),
-                        cor=int(),
-                        estampa=int(),
-                        genero=int(),
+                    dados_especificos["tensao"] = tensao
+                    dados_especificos["potencia"] = potencia
+                    produto = Eletronico(
+                        0,
+                        nome,
+                        qnt,
+                        preco,
+                        fabricante,
+                        float(ncm) / 100,
+                        tensao,
+                        potencia,
                     )
+            elif ITEM_TYPES[2][1] == tipo:
+                tamanho = int(self.tamanho_entry.get())
+                cloatch_tipo = int(self.tipo_roupa_entry.get())
+                tecido: int = self.tecido_combo.get()
+                cor: str = self.cor_entry.get()
+                estampa = self.estampa_entry.get()
+                genero: int = self.genero_entry.get()
+
+                if tamanho < 0:
+                    error = "Tamanho negativo"
+                else:
+                    produto = Roupas(
+                        0,
+                        nome,
+                        qnt,
+                        preco,
+                        fabricante,
+                        float(ncm) / 100,
+                        tamanho,
+                        cloatch_tipo,
+                        tecido,
+                        cor,
+                        estampa,
+                        genero,
+                    )
+            elif ITEM_TYPES[3][1] == tipo:
+                ano = int(self.ano_entry.get())
+                marca = self.marca_entry.get()
+                funcao = self.funcao_entry.get()
+                tipo_eletro = self.tipo_eletro_entry.get()
+
+                produto = Eletrodomestico(
+                    0,
+                    nome,
+                    qnt,
+                    preco,
+                    fabricante,
+                    float(ncm) / 100,
+                    ano,
+                    marca,
+                    funcao,
+                    tipo_eletro,
                 )
-
-        # elif t == "Eletrodoméstico":
-
-        #     if not self.ano_entry.get().isdigit():
-        #         error = "Ano inválido"
-
-        #     dados_especificos.update(
-        #         dict(
-        #             ano_lancamento=int(self.ano_entry.get()),
-        #             marca=self.marca_entry.get(),
-        #             funcao=self.funcao_entry.get(),
-        #             tipo=int(self.tipo_eletro_entry.get()),
-        #         )
-        #     )
+            else:
+                produto = Produto(0, nome, qnt, 0, preco, fabricante, float(ncm) / 100)
 
         if error:
             self.label_error.configure(text=error)
             return
 
+        await db.insert_produto(produto)
+
         self.__back()
 
-    def _change_tipo_produto(self, _):
+    def _change_tipo_produto(self):
         tipo = self.tipo_combo.get()
 
         if self.current_prod_infos:
             self.current_prod_infos.destroy()
             if self._current_tipo == ITEM_TYPES[0][1]:
-                del self._data_validade
+                self._data_validade = None
+            elif self._current_tipo == ITEM_TYPES[1][1]:
+                self.tensao_entry = None
+                self.potencia_entry = None
+            elif tipo == ITEM_TYPES[2][1]:
+                self.tamanho_entry = None
+                self.tipo_roupa_entry = None
+                self.tecido_combo = None
+                self.cor_entry = None
+                self.estampa_entry = None
+                self.genero_entry = None
+            elif tipo == ITEM_TYPES[3][1]:
+                self.ano_entry = None
+                self.marca_entry = None
+                self.funcao_entry = None
+                self.tipo_eletro_entry = None
 
         frame = ttk.Frame(self)
         self.current_prod_infos = frame
 
-        if tipo == ITEM_TYPES[0][1]:
-            self._data_validade = StringVar(None, DATA_PADRAO)
-            ttk.Label(frame, text="Data validade (DD/MM/AAAA):").grid(
-                row=0, column=0, padx=5, pady=5
+        if tipo == ITEM_TYPES[0][0]:
+            self.validade_entry = Default_input(frame, "Data Validade:", "date")
+            self.validade_entry.grid()
+
+        elif tipo == ITEM_TYPES[1][0]:
+            self.tensao_entry = Default_input(frame, "Tensão", "int")
+            self.potencia_entry = Default_input(frame, "Potência", "int")
+            self.tensao_entry.grid()
+            self.potencia_entry.grid(row=1)
+
+        elif tipo == ITEM_TYPES[2][0]:
+            self.tamanho_entry = Default_input(frame, "Tamanho", "int")
+            self.tipo_roupa_entry = Default_input(frame, "Tipo", "int")
+            self.tecido_combo = Default_input(
+                frame, "Tipo Tecido", "combo", TIPOS_TECIDO
             )
-            self.validade_entry = ttk.Entry(frame, textvariable=self._data_validade)
-            self.validade_entry.grid(row=0, column=1, padx=5, pady=5)
-            self._data_validade.trace_add(
-                "write",
-                lambda *args: date_mask(self.validade_entry, self._data_validade),
-            )
-
-        elif tipo == ITEM_TYPES[1][1]:
-            ttk.Label(frame, text="Tensão:").grid(row=0, column=0, padx=5, pady=5)
-            ttk.Label(frame, text="Potência:").grid(row=1, column=0, padx=5, pady=5)
-
-            self.tensao_entry = ttk.Entry(frame)
-            self.potencia_entry = ttk.Entry(frame)
-            self.tensao_entry.grid(row=0, column=1, padx=5, pady=5)
-            self.potencia_entry.grid(row=1, column=1, padx=5, pady=5)
-
-        elif tipo == ITEM_TYPES[2][1]:
-            self.tamanho_entry = ttk.Entry(frame)
-            self.tipo_roupa_entry = ttk.Entry(frame)
-            self.tecido_entry = ttk.Entry(frame)
-            self.cor_entry = ttk.Entry(frame)
-            self.estampa_entry = ttk.Entry(frame)
-            self.genero_entry = ttk.Combobox(
-                frame, width=2, values=("H", "M"), state="readonly"
+            self.cor_entry = Default_input(frame, "Cor", "color")
+            self.estampa_entry = Default_input(frame, "Estampa")
+            self.genero_entry = Default_input(
+                frame, "Gênero", "combo", ("Homem", "Mulher")
             )
 
-            entries = (
-                self.tamanho_entry,
-                self.tipo_roupa_entry,
-                self.tecido_entry,
-                self.cor_entry,
-                self.estampa_entry,
-                self.genero_entry,
-            )
-            for i, label in enumerate(
-                ("Tamanho", "Tipo", "Tecido", "Cor", "Estampa", "Gênero")
-            ):
-                ttk.Label(frame, text=f"{label}:").grid(row=i, column=0, padx=5, pady=5)
-                entries[i].grid(row=i, column=1, padx=5, pady=5, sticky="E")
+            self.tamanho_entry.grid()
+            self.tipo_roupa_entry.grid(row=1)
+            self.tecido_combo.grid(row=2)
+            self.cor_entry.grid(row=3)
+            self.estampa_entry.grid(row=4)
+            self.genero_entry.grid(row=5)
 
-        elif tipo == ITEM_TYPES[3][1]:
-            self.ano_entry = ttk.Entry(frame)
-            self.marca_entry = ttk.Entry(frame)
-            self.funcao_entry = ttk.Entry(frame)
-            self.tipo_eletro_entry = ttk.Entry(frame)
-
-            entries = (
-                self.ano_entry,
-                self.marca_entry,
-                self.funcao_entry,
-                self.tipo_eletro_entry,
-            )
-            for i, label in enumerate(("Ano", "Marca", "Função", "Tipo interno")):
-                ttk.Label(frame, text=f"{label}:").grid(row=i, column=0, padx=5, pady=5)
-                entries[i].grid(row=i, column=1, padx=5, pady=5)
+        elif tipo == ITEM_TYPES[3][0]:
+            self.ano_entry = Default_input(frame, "Ano fabricação:", "int")
+            self.marca_entry = Default_input(frame, "Marca:")
+            self.funcao_entry = Default_input(frame, "Função:")
+            self.tipo_eletro_entry = Default_input(frame, "Tipo:")
+            self.ano_entry.grid()
+            self.marca_entry.grid(row=1)
+            self.funcao_entry.grid(row=2)
+            self.tipo_eletro_entry.grid(row=3)
 
         frame.grid(row=10, columnspan=2)
 

@@ -1,5 +1,5 @@
 from datetime import date
-from constraints import ITEM_TYPES
+from globals import ITEM_TYPES
 
 
 def is_float(string: str) -> bool:
@@ -15,7 +15,7 @@ def get_tipo_descricao(tipo: int):
         if tipo == i[0]:
             return i[1]
 
-    return "Desconhecido"
+    return "Padrão"
 
 def get_pcnt(value: float) -> str:
     return f"{value*100:.1f} %"

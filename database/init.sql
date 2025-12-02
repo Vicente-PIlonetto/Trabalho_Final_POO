@@ -50,12 +50,35 @@ VALUES (1, 'Alimentos'),
     (2, 'Eletrônicos'),
     (3, 'Roupas'),
     (4, 'Elêtrodomésticos');
+CREATE TABLE IF NOT EXISTS fabricante(id INT PRIMARY KEY, name TEXT NOT NULL);
+INSERT
+    OR IGNORE INTO fabricante
+VALUES (1, "Nestlé"),
+    (2, "Samsung"),
+    (3, "Brastemp"),
+    (4, "Nike");
+CREATE TABLE IF NOT EXISTS tipos_roupas(id INT PRIMARY KEY, name TEXT NOT NULL);
+INSERT
+    OR IGNORE INTO tipos_roupas
+VALUES (1, "Camisa"),
+    (2, "Calça"),
+    (3, "Jaqueta"),
+    (4, "Vestido"),
+    (5, "Saia"),
+    (6, "Shorts"),
+    (7, "Blusa"),
+    (8, "Moletom"),
+    (9, "Casaco"),
+    (10, "Camiseta");
 CREATE TABLE IF NOT EXISTS pedido (
     id INT PRIMARY KEY,
     id_usuario INT NOT NULL,
+    tipo INT NOT NULL,
+    completo INT DEFAULT 0,
     value REAL NOT NULL
 );
 CREATE TABLE IF NOT EXISTS items_pedido(
+    id INT PRIMARY KEY,
     pedido_id INT NOT NULL,
     item_id INT NOT NULL,
     quantity INT NOT NULL

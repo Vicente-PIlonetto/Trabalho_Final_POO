@@ -1,16 +1,17 @@
-from tkinter import Frame, StringVar, ttk
+from tkinter import Frame, ttk
 from datetime import datetime
 from typing import Callable
 
+from components.default_input import Default_input
 from constraints import (
     CARGOS,
     CARGOS_IDS,
-    DATA_PADRAO,
     TIPOS_USUARIO,
     TIPOS_USUARIO_IDS,
 )
-from functions import date_mask, possui_digitos, possui_letras, wrapper
+from functions import possui_digitos, possui_letras, wrapper
 from database import db
+from globals import INFOS_PADAO
 from utils import is_float
 
 
@@ -19,67 +20,67 @@ class Sign_up_view(Frame):
     def __init__(self, master, back: Callable) -> None:
         super().__init__(master)
         self.__back = back
-        self.born_date = StringVar(None, DATA_PADRAO)
 
-        # Nome:
-        ttk.Label(self, text="Nome:").grid(row=0, column=0, padx=5, pady=5)
-        self.name_entry = ttk.Entry(self)
-        self.name_entry.grid(row=0, column=1, padx=5, pady=5)
+        self.name_input = Default_input(self, "Nome:")
+        self.name_input.grid(row=0, columnspan=2)
 
-        # Senha:
-        ttk.Label(self, text="Senha:").grid(row=1, column=0, padx=5, pady=5)
-        self.password_entry = ttk.Entry(self, show="*")
-        self.password_entry.grid(row=1, column=1, padx=5, pady=5)
+        self.password_input = Default_input(self, "Senha:", "password")
+        self.password_input.grid(row=1, columnspan=2)
 
-        # Confirmação
-        ttk.Label(self, text="Confirmar senha:").grid(row=2, column=0, padx=5, pady=5)
-        self.confirm_password = ttk.Entry(self, show="*")
-        self.confirm_password.grid(row=2, column=1, padx=5, pady=5)
+        self.confirm_password = Default_input(self, "Confirmar senha:", "password")
+        self.confirm_password.grid(row=2, columnspan=2)
 
-        # dt nascimento
-        ttk.Label(self, text="Data Nascimento:").grid(row=3, column=0, padx=5, pady=5)
-        self.born_date_entry = ttk.Entry(self, textvariable=self.born_date)
-        self.born_date_entry.grid(row=3, column=1, padx=5, pady=5)
-        self.born_date.trace_add(
-            "write", lambda *args: date_mask(self.born_date_entry, self.born_date)
-        )
+        self.born_date_input = Default_input(self, "Data Nascimento:", "date")
+        self.born_date_input.grid(row=3, columnspan=2)
 
-        # Tipo usuario r=4
-        ttk.Label(self, text="Tipo usuario:").grid(row=4, column=0, padx=5, pady=5)
-        self.user_type = ttk.Combobox(
+        self.user_type = Default_input(
             self,
-            values=TIPOS_USUARIO,
-            state="readonly",
+            "Tipo usuario:",
+            "combo",
+            TIPOS_USUARIO,
+            lambda *args: self._change_tipo_usuario(),
+            default_value="Funcionário" if INFOS_PADAO["primeiro_usuario"] else None,
+            block=INFOS_PADAO["primeiro_usuario"],
         )
-        self.user_type.set(TIPOS_USUARIO[0])
-        self.user_type.grid(row=4, column=1)
-        self.user_type.bind("<<ComboboxSelected>>", self._change_tipo_usuario)
+        self.user_type.grid(row=4, columnspan=2)
 
         self.current_user_infos = ttk.Frame(self)
-        self.salario_entry = ttk.Entry(self.current_user_infos)
-        self.cargo_combo = ttk.Combobox(
-            self.current_user_infos, values=CARGOS, state="readonly"
+        self.cargo_input = Default_input(
+            self.current_user_infos,
+            "Cargo",
+            "combo",
+            CARGOS,
+            default_value="Administrador" if INFOS_PADAO["primeiro_usuario"] else None,
+            block=INFOS_PADAO["primeiro_usuario"],
         )
-        self.cargo_combo.set(CARGOS[0])
+        self.salario_input = Default_input(self.current_user_infos, "Salario:", "float")
+        self.cargo_input.pack(fill="x")
+        self.salario_input.pack(fill="x")
 
-        # Erro r=7
+        if INFOS_PADAO["primeiro_usuario"]:
+            self._change_tipo_usuario(False)
+
         self.label_error = ttk.Label(self, foreground="red")
         self.label_error.grid(row=7, columnspan=2)
 
         frame = Frame(self)
-        ttk.Button(frame, text="Sair", command=back).grid(row=0, column=0)
-        ttk.Button(
+        btn = ttk.Button(
             frame, text="Criar Conta", command=lambda: wrapper(self.sign_up)
-        ).grid(row=0, column=1)
+        )
+        if not INFOS_PADAO["primeiro_usuario"]:
+            ttk.Button(frame, text="Voltar", command=back).grid(row=0, column=0)
+            btn.grid(row=0, column=1)
+        else:
+            btn.pack()
         frame.grid(row=8, columnspan=2)
 
     async def sign_up(self):
         error = None
-        name = self.name_entry.get()
-        password = self.password_entry.get()
+        name = self.name_input.get()
+        password = self.password_input.get()
         password2 = self.confirm_password.get()
-        born_dt = self.born_date.get()
-        user_type = self.user_type.get()
+        born_dt = self.born_date_input.get()
+        user_type = int(self.user_type.get())
         cargo = None
         salario = None
 
@@ -95,18 +96,18 @@ class Sign_up_view(Frame):
             error = "Adicione ao menos 1 letra na senha"
         elif "_" in born_dt:
             error = "Preencha a data de nascimento"
-        elif user_type == TIPOS_USUARIO[1]:
-            cargo = self.cargo_combo.get()
-            salario = self.salario_entry.get()
+        elif user_type == 1:
+            cargo = self.cargo_input.get()
+            salario = float(self.salario_input.get())
 
-            if not is_float(salario):
-                error = "Salário não é um decimal"
+            if salario < 0:
+                error = "Salário negativo"
 
             else:
                 salario = float(salario)
-                cargo = CARGOS_IDS[CARGOS.index(cargo)]
+                cargo = CARGOS_IDS[cargo]
 
-        user_type = TIPOS_USUARIO_IDS[TIPOS_USUARIO.index(user_type)]
+        user_type = TIPOS_USUARIO_IDS[user_type]
 
         if not error:
             dt = int(datetime.strptime(born_dt, "%d/%m/%Y").timestamp() * 1000)
@@ -126,19 +127,11 @@ class Sign_up_view(Frame):
         if error:
             self.label_error.configure(text=error)
 
-    def _change_tipo_usuario(self, _):
+    def _change_tipo_usuario(self, deletar=True):
         tipo = self.user_type.get()
 
-        if self.current_user_infos and tipo != TIPOS_USUARIO[1]:
-            self.current_user_infos.destroy()
+        if deletar and tipo != TIPOS_USUARIO[1]:
+            self.current_user_infos.grid_forget()
 
-        if tipo == TIPOS_USUARIO[1]:
-            frame = self.current_user_infos
-
-            ttk.Label(frame, text="Cargo:").grid(row=0, column=0)
-            ttk.Label(frame, text="Salário:").grid(row=1, column=0)
-
-            self.cargo_combo.grid(row=0, column=1)
-            self.salario_entry.grid(row=1, column=1)
-
-            frame.grid(row=5, columnspan=2, column=0)
+        if tipo == 1:
+            self.current_user_infos.grid(row=5, column=0, columnspan=2, sticky="ew")
